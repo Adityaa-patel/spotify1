@@ -1,6 +1,4 @@
-making a spotify analiser like stats fm but free and better?
-it'll be a discord first and then maybe even a website
-
-it aims to do more than stats.fm, once I'm done wiith core stuff like storing extracting and using data efficently i'll focus on visuallizing it with area graphs showing raise and fall of artists and even playlists
+making a spotify analiser like stats fm or lastfm bot but free and a bit more focus on visualization, area graphs showing raise and fall of artists and even playlists
+it'll be a discord first and then maybe even a website 
 
 also i'll be using spotify api to record new data 
