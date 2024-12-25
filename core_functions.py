@@ -2,7 +2,7 @@ from collections import Counter
 from file_input import songsss
 from datetime import date
 
-def top(date_time=None, n=5):
+def top_monthly(date_time=None, n=5):
     if date_time is not None:
         sourcefile = list(filter(lambda x: x[4][:7] == date_time, songsss))
     else:
