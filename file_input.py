@@ -1,5 +1,11 @@
 import json
-from core_functions import data_extract
+
+def data_extract(content_):
+    extracted_data = []
+    for i in content_:
+        if i['master_metadata_track_name'] is not None:
+            extracted_data.append([i["master_metadata_track_name"],i["master_metadata_album_artist_name"],i["master_metadata_album_album_name"],i["spotify_track_uri"][14:],i['ts'][:10],i['ms_played'],i["skipped"],i['reason_start']])
+    return extracted_data
 
 with open(r'_testfiles\Streaming_History_Audio_2021-2023_0.json', 'r', encoding='utf-8') as file:
     content1 = json.load(file) # content is in list format
