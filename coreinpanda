@@ -1,0 +1,70 @@
+from spotify1.panda import songs_only_df
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({
+    'axes.facecolor': '#282c34',
+    'axes.edgecolor': '#abb2bf',  
+    'axes.labelcolor': '#ffffff', 
+    'xtick.color': '#ffffff', 
+    'ytick.color': '#ffffff',
+    'grid.color': '#4b5263',  
+    'figure.facecolor': '#1c1e24',  
+    'legend.facecolor': '#282c34',  
+    'legend.edgecolor': '#abb2bf',
+    'text.color': '#ffffff',  
+})
+
+artists = ["Eminem", "Nirvana", "The Beatles", "Queen", "The Rolling Stones", "Led Zeppelin", "Pink Floyd", "The Doors"]
+
+plt.figure(figsize=(12, 6))
+
+total_daily_data = pd.DataFrame()
+
+for artist_name in artists:
+    artist_data = songs_only_df[songs_only_df['master_metadata_album_artist_name'] == artist_name]
+    daily_data = artist_data.resample('D', on='ts')['ms_played'].sum().reset_index()
+    daily_data['hours_played'] = daily_data['ms_played'] / (1000 * 60 * 60)
+    daily_data['smoothed_hours'] = daily_data['hours_played'].rolling(window=7, min_periods=1).mean()
+
+    plt.plot(
+        daily_data['ts'],
+        daily_data['smoothed_hours'],
+        label=f'{artist_name} (Smoothed)',
+        alpha=0.4,
+        linewidth=2
+    )
+
+    if total_daily_data.empty:
+        total_daily_data = daily_data[['ts', 'hours_played']].copy()
+    else:
+        total_daily_data = total_daily_data.merge(
+            daily_data[['ts', 'hours_played']],
+            on='ts',
+            how='outer',
+            suffixes=('', f'_{artist_name}')
+        )
+
+total_daily_data['total_hours_played'] = total_daily_data.filter(like='hours_played').sum(axis=1)
+
+total_daily_data['smoothed_total_hours'] = total_daily_data['total_hours_played'].rolling(window=7, min_periods=1).mean()
+
+plt.plot(
+    total_daily_data['ts'],
+    total_daily_data['smoothed_total_hours'],
+    label='Total Listening Time (All Artists) (Smoothed)',
+    color='black',
+    linestyle='--',
+    linewidth=2,
+    alpha=0.5
+)
+
+# Add title, labels, and legend
+plt.title('Smoothed Daily Listening Time for Multiple Artists and Total (All Artists)', fontsize=16, weight='bold', color='#61dafb')
+plt.xlabel('Day', fontsize=12, weight='bold')
+plt.ylabel('Hours Played (Smoothed)', fontsize=12, weight='bold')
+plt.legend(framealpha=0.8, fontsize=10, loc='upper left')
+plt.grid(alpha=0.5)
+plt.show()
+
+

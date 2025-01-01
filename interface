@@ -1,9 +1,4 @@
+from spotify1.file_input import songsss
+from spotify1.core_functions import top_monthly
 
-from datetime import date
-from file_input import songsss
-
-n = int((str(date.fromisoformat(songsss[-1][4]) - date.fromisoformat(songsss[0][4]))[:4]))//7
-listweekly=[]
-for i in range(n):
-    for j in range(7):
-        listweekly+=list(filter(lambda x: date.fromisoformat == , songsss))
+print(top_monthly(songsss))
