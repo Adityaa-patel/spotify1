@@ -23,13 +23,12 @@ total_daily_data = pd.DataFrame()
 
 for artist_name in artists:
     artist_data = songs_only_df[songs_only_df['master_metadata_album_artist_name'] == artist_name]
-    daily_data = artist_data.resample('D', on='ts')['ms_played'].sum().reset_index()
+    daily_data = artist_data.resample('W', on='ts')['ms_played'].sum().reset_index()
     daily_data['hours_played'] = daily_data['ms_played'] / (1000 * 60 * 60)
-    daily_data['smoothed_hours'] = daily_data['hours_played'].rolling(window=7, min_periods=1).mean()
 
     plt.plot(
         daily_data['ts'],
-        daily_data['smoothed_hours'],
+        daily_data['hours_played'],
         label=f'{artist_name} (Smoothed)',
         alpha=0.4,
         linewidth=2
@@ -45,14 +44,14 @@ for artist_name in artists:
             suffixes=('', f'_{artist_name}')
         )
 
-total_daily_data['total_hours_played'] = total_daily_data.filter(like='hours_played').sum(axis=1)
-
-total_daily_data['smoothed_total_hours'] = total_daily_data['total_hours_played'].rolling(window=7, min_periods=1).mean()
+daily_hours = songs_only_df
+daily_hours = daily_hours.resample('W', on='ts')['ms_played'].sum().reset_index()
+daily_hours['hours_played'] = daily_hours['ms_played'] / (1000 * 60 * 60)
 
 plt.plot(
-    total_daily_data['ts'],
-    total_daily_data['smoothed_total_hours'],
-    label='Total Listening Time (All Artists) (Smoothed)',
+    daily_hours['ts'],
+    daily_hours['hours_played'],
+    label='Total Listening Time',
     color='black',
     linestyle='--',
     linewidth=2,
