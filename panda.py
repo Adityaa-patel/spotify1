@@ -30,16 +30,16 @@ songs_only_df.to_csv(output_file, index=False)
 print(f"DataFrame saved to")
 
 
-# def get_artist_genres(artist_name):
-#     try:
-#         results = spotify.search(q=f'artist:{artist_name}', type='artist', limit=1)
-#         if results['artists']['items']:
-#             return results['artists']['items'][0]['genres']
-#         else:
-#             return None
-#     except Exception as e:
-#         print(f"Error fetching genres for {artist_name}: {e}")
-#         return None
+def get_artist_genres(artist_name):
+    try:
+        results = spotify.search(q=f'artist:{artist_name}', type='artist', limit=1)
+        if results['artists']['items']:
+            return results['artists']['items'][0]['genres']
+        else:
+            return None
+    except Exception as e:
+        print(f"Error fetching genres for {artist_name}: {e}")
+        return None
 
 # # Add genres column
 # songs_only_df['genres'] = songs_only_df['master_metadata_album_artist_name'].apply(get_artist_genres)
