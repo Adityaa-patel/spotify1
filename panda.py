@@ -30,7 +30,7 @@ songs_only_df.to_csv(output_file, index=False)
 print(f"DataFrame saved to")
 
 
-def get_artist_genres(artist_name):
+def get_artist_genres_for_1_artist(artist_name):
     try:
         results = spotify.search(q=f'artist:{artist_name}', type='artist', limit=1)
         if results['artists']['items']:
@@ -41,11 +41,19 @@ def get_artist_genres(artist_name):
         print(f"Error fetching genres for {artist_name}: {e}")
         return None
 
-# # Add genres column
-# songs_only_df['genres'] = songs_only_df['master_metadata_album_artist_name'].apply(get_artist_genres)
 
-# # Save to CSV
-# output_file = 'c:\\githubb\\.venv\\spotify1\\output.csv'
-# songs_only_df.to_csv(output_file, index=False)
-# print(f"DataFrame with genres saved to {output_file}")
+def get_artist_genres_real(artist_name):  # not using this because songs are genre fluid like it might be diffrent from the artist genre
+    try:
+        if type(artist_name) == list:
+            return [get_artist_genres_for_1_artist(artist) for artist in artist_name]
+        elif type(artist_name) == str:
+            return get_artist_genres_for_1_artist(artist_name)
+        else:
+            return None
+    except Exception as e:
+        print(f"Error fetching genres for {artist_name}: {e}")
+        return None
 
+
+
+print(get_artist_genres_real(['The Beatles', 'The Rolling Stones', 'The Who', 'The Kinks', 'The Animals', 'The Yardbirds', 'The Zombies', 'The Hollies', 'The Byrds']))
