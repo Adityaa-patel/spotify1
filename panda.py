@@ -25,9 +25,9 @@ df=df[['ts','ms_played','master_metadata_track_name','master_metadata_album_arti
 df['ts'] = pd.to_datetime(df['ts'])
 songs_only_df = df.query('master_metadata_track_name != None and ms_played>1000')
 
-output_file = 'c:\\githubb\\.venv\\spotify1\\output.csv'
-songs_only_df.to_csv(output_file, index=False)
-print(f"DataFrame saved to")
+#output_file = 'c:\\githubb\\.venv\\spotify1\\output.csv'
+#songs_only_df.to_csv(output_file, index=False)
+#print(f"DataFrame saved to")
 
 
 def get_artist_genres_for_1_artist(artist_name):
@@ -56,4 +56,4 @@ def get_artist_genres_real(artist_name):  # not using this because songs are gen
 
 
 
-print(get_artist_genres_real(['The Beatles', 'The Rolling Stones', 'The Who', 'The Kinks', 'The Animals', 'The Yardbirds', 'The Zombies', 'The Hollies', 'The Byrds']))
+#print(get_artist_genres_real(['The Beatles', 'The Rolling Stones', 'The Who', 'The Kinks', 'The Animals', 'The Yardbirds', 'The Zombies', 'The Hollies', 'The Byrds']))

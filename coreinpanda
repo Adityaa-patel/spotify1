@@ -15,7 +15,7 @@ plt.rcParams.update({
     'text.color': '#ffffff',  
 })
 
-artists = ["Eminem", "Nirvana", "The Beatles", "Queen", "The Rolling Stones", "Led Zeppelin", "Pink Floyd", "The Doors"]
+artists = ["Eminem", "Nirvana", "Soundgarden", "Nanku", "New Jeans", "Led Zeppelin", "Taba Chake", "Nujabes"]
 
 plt.figure(figsize=(12, 6))
 
