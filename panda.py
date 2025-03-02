@@ -5,10 +5,8 @@ import time
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyClientCredentials
 from dotenv import load_dotenv
+
 load_dotenv()
-
-
-# Authenticate with Spotify API
 spotify = Spotify(auth_manager=SpotifyClientCredentials(client_id=os.getenv("SPOTIPY_CLIENT_ID"),
                                                          client_secret=os.getenv("SPOTIPY_CLIENT_SECRET")))
 
@@ -56,4 +54,9 @@ def get_artist_genres_real(artist_name):  # not using this because songs are gen
 
 
 
-#print(get_artist_genres_real(['The Beatles', 'The Rolling Stones', 'The Who', 'The Kinks', 'The Animals', 'The Yardbirds', 'The Zombies', 'The Hollies', 'The Byrds']))
+
+# daily_hours = songs_only_df
+# daily_hours = daily_hours.resample('W', on='ts')['ms_played'].sum().reset_index()
+# songs_only_df['weekly hours'] = daily_hours['ms_played'] / (1000*60*60)
+
+# print(daily_hours.head())

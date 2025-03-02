@@ -1,8 +1,0 @@
-l=[['classic rock', 'psychedelic rock'], ['classic rock', 'rock'], ['classic rock', 'rock'], ['proto-punk', 'baroque pop'], ['classic rock'], ['psychedelic rock', 'acid rock', 'blues rock'], ['baroque pop', 'psychedelic rock', 'psychedelic pop']]
-def lister(sample_list):
-    j=set()
-    for i in sample_list[0]:
-        j.update(i)
-    return list(j)
-
-print(lister(l))
