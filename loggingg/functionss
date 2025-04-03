@@ -96,7 +96,7 @@ def log_currently_playing(sp, output_file_path):
                         last_track_logged['ms_played'] = ms_played
                         write_entry_to_csv(last_track_logged, output_file_path)
                         logging.info(f"Updated ms_played for the previous track: {ms_played} ms")
-                # Reset last track variables
+                # Reset variables
                 last_track_id = None
                 last_track_start_time = None
                 last_track_logged = None
@@ -105,7 +105,7 @@ def log_currently_playing(sp, output_file_path):
             else:
                 logging.info("No track is currently playing.")
 
-            time.sleep(10)  # checks 10 seconds
+            time.sleep(10)  # checks every 10 seconds
     except KeyboardInterrupt:
         logging.info("Exiting log_currently_playing due to keyboard interrupt.")
 
