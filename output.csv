@@ -1,12 +1,10 @@
-ts,ms_played,master_metadata_track_name,master_metadata_album_artist_name,master_metadata_album_album_name,spotify_track_uri,genre,reason_start,reason_end,offline_timestamp
-2025-03-30 10:17:12.799,262686,Gaayab,Raman Negi,Shakhsiyat,spotify:track:7nW3uacwu2MvjvZINBF98e,unknown,endplay,0
-2025-03-30 10:21:35.485,227496,Koyla,Raman Negi,Shakhsiyat,spotify:track:5JLZveuFuVkQd457QtIq0i,unknown,endplay,0
-2025-03-30 10:25:22.981,235537,Berang,Raman Negi,Chaltey Purzay,spotify:track:64rlzpYkru2snOcpWBC6K8,unknown,endplay,0
-2025-03-30 10:29:18.518,190477,Darmiyaani Ungli Chronicles,Raman Negi,Chaltey Purzay,spotify:track:7jH6JtfZAOS4fIGpiYGqbH,unknown,endplay,0
-2025-04-03T04:55:37.135000Z,203625,Everyone Adores You (at least I do),Matt Maltese,Good Morning It's Now Tomorrow,spotify:track:6klFWv2xDGeTDoiKTtx4hg
-2025-04-03T04:59:00.760000Z,204252,Can't Take My Eyes off You,Frankie Valli,Solo,spotify:track:0bfvHnWWOeU1U5XeKyVLbW
-2025-04-03T05:02:25.012000Z,162098,Puppy Love - Remastered,Paul Anka,Paul Anka Sings His Big 15 (Remastered),spotify:track:1mdfrHeZzxjz0FJ4BKRuxS
-2025-04-03T05:05:07.110000Z,132531,Beanie,Chezile,Beanie,spotify:track:5e0b9LgOfi3aJSKXFcOWRe
-2025-04-03T05:07:19.641000Z,175848,wildflower,yung kai,wildflower,spotify:track:0u7Shj9zotYlZR1HTV04CX
-2025-04-03T05:10:15.489000Z,201440,Good Looking,Suki Waterhouse,Good Looking,spotify:track:0j3mqDTK4Z6lvrLzFCUUz6
-2025-04-03T05:10:15.489000Z,3:21,Good Looking,Suki Waterhouse,Good Looking,spotify:track:0j3mqDTK4Z6lvrLzFCUUz6
+ts,ms_played,master_metadata_track_name,master_metadata_album_artist_name,master_metadata_album_album_name,spotify_track_uri
+2025-04-03T17:03:14.483000Z,47463,Valentine,Laufey,Everything I Know About Love,spotify:track:6cx5CvFhqN19efStehJqoW
+2025-04-03T17:03:14.483000Z,47463,Valentine,Laufey,Everything I Know About Love,spotify:track:6cx5CvFhqN19efStehJqoW
+2025-04-03T17:04:01.946000Z,0,Put Your Head On My Shoulder - Remastered,Paul Anka,Paul Anka Sings His Big 15 (Remastered),spotify:track:6YDDrg8llsRtAgLlIROzZc
+2025-04-03T17:14:41.834000Z,6717,Put Your Head On My Shoulder - Remastered,Paul Anka,Paul Anka Sings His Big 15 (Remastered),spotify:track:6YDDrg8llsRtAgLlIROzZc
+2025-04-03T17:14:41.834000Z,6717,Put Your Head On My Shoulder - Remastered,Paul Anka,Paul Anka Sings His Big 15 (Remastered),spotify:track:6YDDrg8llsRtAgLlIROzZc
+2025-04-03T17:14:48.551000Z,0,do you think you could love me?,yung kai,do you think you could love me?,spotify:track:2SyLEZFDH9pHAF4GpfVRJS
+2025-04-03T17:14:48.551000Z,108606,do you think you could love me?,yung kai,do you think you could love me?,spotify:track:2SyLEZFDH9pHAF4GpfVRJS
+2025-04-03T17:14:48.551000Z,108606,do you think you could love me?,yung kai,do you think you could love me?,spotify:track:2SyLEZFDH9pHAF4GpfVRJS
+2025-04-03T17:16:37.157000Z,0,Tears in Heaven,Eric Clapton,Rush (Music from the Motion Picture Soundtrack),spotify:track:1kgdslQYmeTR4thk9whoRw

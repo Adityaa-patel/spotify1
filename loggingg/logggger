@@ -1,0 +1,255 @@
+import spotipy
+import pandas as pd
+import os
+import time
+import logging
+import logging.config
+import asyncio
+from APIsetup import sp  # Authenticated Spotify API client
+from dotenv import load_dotenv
+from typing import Dict, Optional, List
+import csv  
+
+load_dotenv()
+
+# Default output file path
+DEFAULT_OUTPUT_FILE_PATH = 'C:\\githubb\\.venv\\spotify1\\output.csv'
+
+csvHeader = [
+    'ts', 'ms_played', 'master_metadata_track_name',
+    'master_metadata_album_artist_name', 'master_metadata_album_album_name',
+    'spotify_track_uri'
+]
+
+# Configure logging via environment variable LOGGING_LEVEL (default: INFO)
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO").upper()
+LOGGING_CONFIG = {
+    'version': 1,
+    'formatters': {
+        'default': {
+            'format': '%(asctime)s - %(levelname)s  - %(message)s'
+        }
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'default',
+            'level': LOGGING_LEVEL,
+        }
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': LOGGING_LEVEL,
+    }
+}
+logging.config.dictConfig(LOGGING_CONFIG)
+
+
+class SpotifyLogger:
+
+    def __init__(self, sp_client: spotipy.Spotify, output_file: str, poll_interval: int = 1, buffer_size: int = 10, inactivity_timeout: int = 90, flush_interval: int = 60):
+        """
+        sp_client: authenticated Spotipy client object
+        output_file: Path to the CSV output file.
+        poll_interval: Time interval in seconds to check for the current song.
+        buffer_size: The number of entries to store before writing to CSV.
+        inactivity_timeout: Time in seconds after which logging stops if no song is playing.
+        flush_interval: Time interval in seconds to periodically flush the buffer to CSV.
+        """
+        self.sp = sp_client
+        self.output_file = output_file
+        self.poll_interval = poll_interval
+        self.buffer_size = buffer_size
+        self.entry_buffer: List[Dict] = []
+        self.last_track_id: Optional[str] = None
+        self.last_track_start_time: Optional[int] = None
+        self.last_track_logged: Optional[Dict] = None
+        self.last_song_played_time: Optional[float] = None
+        self.inactivity_timeout = inactivity_timeout
+        self.logging_active = True
+        self.last_track_finalized: bool = False
+        self.flush_interval = flush_interval
+        self._flush_task: Optional[asyncio.Task] = None
+        self.is_paused: bool = False  # Flag to track if the current track is paused
+
+        # Ensure CSV file exists with header based on the configured output path
+        if not os.path.exists(self.output_file):
+            pd.DataFrame(columns=csvHeader).to_csv(self.output_file, index=False)
+
+    def writeOneEntry(self, entry: Dict) -> None:
+        """Adds a single entry to the buffer and writes the buffer to CSV if it reaches the buffer size."""
+        self.entry_buffer.append(entry)
+        logging.debug(f"Entry added to buffer: {entry.get('master_metadata_track_name', 'N/A')}")
+        if len(self.entry_buffer) >= self.buffer_size:
+            self.writeBuffer()
+
+    def writeBuffer(self) -> None:
+        """Writes the current buffer of entries to the CSV file."""
+        if self.entry_buffer:
+            df = pd.DataFrame(self.entry_buffer)
+            file_exists = os.path.exists(self.output_file)
+            try:
+                if file_exists:
+                    df.to_csv(self.output_file, mode='a', header=False, index=False, quoting=csv.QUOTE_MINIMAL)
+                else:
+                    df.to_csv(self.output_file, index=False, quoting=csv.QUOTE_MINIMAL)
+                #logging.info(f"Wrote {len(self.entry_buffer)} entries to CSV.")
+                self.entry_buffer = []
+            except IOError as e:
+                logging.error(f"Error writing to CSV file '{self.output_file}': {e}")
+            except Exception as e:
+                logging.error(f"An unexpected error occurred during CSV writing: {e}")
+
+    def updateLastTrack(self, current_timestamp: int) -> None:
+        """Updates the 'ms_played' for the previously logged track and writes it to the buffer."""
+        if self.last_track_start_time is not None and self.last_track_logged:
+            ms_played = current_timestamp - self.last_track_start_time
+            self.last_track_logged['ms_played'] = ms_played
+            self.writeOneEntry(self.last_track_logged)
+            logging.info(f"Updated ms_played: {ms_played} ms for '{self.last_track_logged.get('master_metadata_track_name', 'N/A')}'")
+
+    async def _periodic_flush(self) -> None:
+        """Periodically flushes the buffer to the CSV file."""
+        while self.logging_active:
+            await asyncio.sleep(self.flush_interval)
+            if self.entry_buffer:
+                self.writeBuffer()
+
+    async def getCurrentSong(self) -> None:
+        """
+        Asynchronously polls for the current playing track and logs the information using buffered writing.
+        Stops if no song is playing for the defined inactivity timeout, differentiating between pauses and track ends.
+        Ensures final play duration is logged only once per track.
+        Periodically flushes the buffer to prevent data loss.
+        Handles exceptions during Spotify API calls and file writing.
+        Logs pause/resume events only on state change.
+        """
+        self._flush_task = asyncio.create_task(self._periodic_flush())
+        try:
+            while self.logging_active:
+                try:
+                    current_track = self.sp.current_user_playing_track()
+                except Exception as e:
+                    logging.error(f"Error fetching current track: {e}")
+                    await asyncio.sleep(10)
+                    continue
+
+                if current_track and current_track.get('is_playing'):
+                    track_item = current_track.get('item')
+                    if not track_item:
+                        logging.warning("No track item found in response.")
+                        await asyncio.sleep(self.poll_interval)
+                        continue
+
+                    track_id = track_item.get('id')
+                    track_name = track_item.get('name')
+                    album_name = track_item.get('album', {}).get('name')
+                    artists = ', '.join(artist.get('name') for artist in track_item.get('artists', []))
+                    timestamp = pd.to_datetime(current_track['timestamp'], unit='ms').isoformat() + 'Z'
+                    spotify_uri = track_item.get('uri')
+                    current_timestamp = current_track['timestamp']
+
+                    if track_id != self.last_track_id:
+                        if self.last_track_id is not None:
+                            self.updateLastTrack(current_timestamp)
+                            self.last_track_finalized = True  # Mark the previous track as finalized
+
+                        new_entry = {
+                            'ts': timestamp,
+                            'ms_played': 0,
+                            'master_metadata_track_name': track_name,
+                            'master_metadata_album_artist_name': artists,
+                            'master_metadata_album_album_name': album_name,
+                            'spotify_track_uri': spotify_uri
+                        }
+                        logging.info(f"New track: {track_name} by {artists} at {timestamp}")
+                        self.last_track_id = track_id
+                        self.last_track_start_time = current_timestamp
+                        self.last_track_logged = new_entry
+                        self.writeOneEntry(new_entry)
+                        self.last_song_played_time = time.time()
+                        self.last_track_finalized = False  # Reset the flag for the new track
+                        self.is_paused = False  # Reset pause state when a new track starts
+
+                    elif self.last_track_id is not None:
+                        # Song is still playing
+                        self.last_song_played_time = time.time()
+                        if self.is_paused:
+                            logging.info(f"Track '{track_name}' resumed playing.")
+                            self.is_paused = False
+
+                else:
+                    current_time = time.time()
+                    if self.last_track_id is not None:
+                        # Check if the current track (even if not playing) is the same as the last one
+                        current_track_item = current_track.get('item') if current_track else None
+                        current_track_id = current_track_item.get('id') if current_track_item else None
+                        is_playing = current_track.get('is_playing', False)
+
+                        if current_track_id == self.last_track_id:
+                            # Log pause/resume only when state changes
+                            if not is_playing and not self.is_paused:
+                                logging.info(f"Track '{self.last_track_logged.get('master_metadata_track_name', 'N/A')}' is paused.")
+                                self.is_paused = True
+                            elif is_playing and self.is_paused:
+                                logging.info(f"Track '{self.last_track_logged.get('master_metadata_track_name', 'N/A')}' resumed playing.")
+                                self.is_paused = False
+                            self.last_song_played_time = time.time()
+                        elif not self.last_track_finalized:
+                            # Track ended or skipped
+                            self.updateLastTrack(int(time.time() * 1000))
+                            logging.info("Playback stopped or track skipped.")
+                            self.last_track_id = None
+                            self.last_track_start_time = None
+                            self.last_track_logged = None
+                            self.last_song_played_time = None
+                            self.last_track_finalized = True
+                            self.is_paused = False  # Reset pause state when track ends
+                            # Write any remaining entries in the buffer
+                            self.writeBuffer()
+                    else:
+                        logging.info("No song playing. Continuing to monitor...")
+                        self.last_song_played_time = None  # Reset if no song ever played or after inactivity
+                        self.last_track_finalized = False  # Reset if no track was playing
+                        self.is_paused = False  # Reset pause state if no track is playing
+
+                    # Check for inactivity timeout only when no song is actively playing
+                    if self.last_song_played_time is not None and (current_time - self.last_song_played_time) >= self.inactivity_timeout and not (current_track and current_track.get('is_playing')):
+                        logging.info(f"No song actively playing for {self.inactivity_timeout} seconds. Stopping logging.")
+                        self.logging_active = False
+                        # Ensure any remaining entries are written
+                        self.writeBuffer()
+                        break  # Exit the while loop
+
+                await asyncio.sleep(self.poll_interval)
+        except asyncio.CancelledError:
+            logging.info("Logging cancelled within getCurrentSong.")
+        finally:
+            if self._flush_task:
+                self._flush_task.cancel()
+                try:
+                    await self._flush_task
+                except asyncio.CancelledError:
+                    pass
+            # Ensure any remaining entries in the buffer are written on exit
+            if hasattr(self, 'entry_buffer') and self.entry_buffer:
+                self.writeBuffer()
+
+
+if __name__ == "__main__":
+    poll_rate = int(os.getenv("SPOTIFY_POLL_INTERVAL", 5))  # Default 5 sec
+    buffer_size = int(os.getenv("SPOTIFY_BUFFER_SIZE", 10))  # Default buffer size 10
+    inactivity_timeout = int(os.getenv("SPOTIFY_INACTIVITY_TIMEOUT", 90))  # Default 90 seconds
+    flush_interval = int(os.getenv("SPOTIFY_FLUSH_INTERVAL", 60))  # Default flush every 60 seconds
+    output_file_path = os.getenv("SPOTIFY_OUTPUT_FILE_PATH", DEFAULT_OUTPUT_FILE_PATH)  # Default output file path
+
+    spotify_logger = SpotifyLogger(sp, output_file_path, poll_rate, buffer_size, inactivity_timeout, flush_interval)
+    try:
+        asyncio.run(spotify_logger.getCurrentSong())
+    except KeyboardInterrupt:
+        logging.info("Exiting due to keyboard interrupt at the top level.")
+    except asyncio.CancelledError:
+        logging.info("Asyncio task was cancelled at the top level.")
+
+
+"Wrote "

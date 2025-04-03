@@ -1,0 +1,35 @@
+# def get_artist_genres_when_multiple(song_name):
+#     try:
+#         for i in song_name:
+#             print(i['name'])
+#     #         results = sp.search(q=f'artist:{i['name']}', type='artist', limit=1)
+#     #         if results['artists']['items']:
+#     #             return results['artists']['items'][0]['genres']
+#     #         else:
+#     #             return None
+#     except Exception as e:
+#         print(f"Error fetching genres for {song_name}: {e}")
+#         return None
+# print('kkkkk')
+#print(get_artist_name_list())
+
+
+
+# def get_artist_genres(artist_name):
+#     try:
+#         results = sp.search(q=f'artist:{artist_name}', type='artist', limit=1)
+#         if results['artists']['items']:
+#             return results['artists']['items'][0]['genres']
+#         else:
+#             return None
+#     except Exception as e:
+#         print(f"Error fetching genres for {artist_name}: {e}")
+#         return None
+
+
+
+
+
+# def get_artist_name_list():
+#     current_track = sp.current_user_playing_track()
+#     return list(lambda x: current_track['item']['artists'][x]['name'] )
