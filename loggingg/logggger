@@ -12,7 +12,11 @@ import csv
 
 load_dotenv()
 
-# Default output file path
+""""----------------------------------------------------------------------------------------------------------
+--------------------------------------THIS IS LOGGING SAME THING TWICE----------------------------------------
+--------------------------------------------------------------------------------------------------------------"""
+
+
 DEFAULT_OUTPUT_FILE_PATH = 'C:\\githubb\\.venv\\spotify1\\output.csv'
 
 csvHeader = [
@@ -251,5 +255,3 @@ if __name__ == "__main__":
     except asyncio.CancelledError:
         logging.info("Asyncio task was cancelled at the top level.")
 
-
-"Wrote "
