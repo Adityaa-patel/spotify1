@@ -10,29 +10,30 @@ load_dotenv()
 
 output_file_path = 'C:\\githubb\\.venv\\spotify1\\output.csv'
 
-# check if csv file exists if not it makes one
+# Check if CSV file exists, if not create one with the desired header
 if not os.path.exists(output_file_path):
-    df = pd.DataFrame(columns=['ts', 'ms_played', 'master_metadata_track_name',
-                               'master_metadata_album_artist_name', 'master_metadata_album_album_name',
-                               'spotify_track_uri', 'genre', 'reason_start', 'reason_end', 'offline_timestamp'])
+    df = pd.DataFrame(columns=[
+        'ts', 'ms_played', 'master_metadata_track_name',
+        'master_metadata_album_artist_name', 'master_metadata_album_album_name',
+        'spotify_track_uri'
+    ])
     df.to_csv(output_file_path, index=False)
-
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 def write_entry_to_csv(entry, output_file_path):
-    """Helper function to append a single entry (as a dict) to a CSV file."""
     df = pd.DataFrame([entry])
     df.to_csv(output_file_path, mode='a', header=False, index=False)
+    print(','.join(str(entry[col]) for col in [
+        'ts', 'ms_played', 'master_metadata_track_name',
+        'master_metadata_album_artist_name', 'master_metadata_album_album_name',
+        'spotify_track_uri'
+    ]))
 
 def log_currently_playing(sp, output_file_path):
     """
-    Polls the current Spotify playback, logs track information, and updates the ms_played when track changes or stops.
-    
-    Args:
-        sp: Authenticated Spotify API client.
-        output_file_path: CSV file path for logging track entries.
+        sp is authenticated Spotify API client.
     """
     last_track_id = None
     last_track_start_time = None
@@ -58,14 +59,12 @@ def log_currently_playing(sp, output_file_path):
                 track_name = track_item.get('name')
                 album_name = track_item.get('album', {}).get('name')
                 artists = ', '.join([artist.get('name') for artist in track_item.get('artists', [])])
-                # Convert timestamp from ms to datetime for logging purposes
-                timestamp = pd.to_datetime(current_track['timestamp'], unit='ms')
+                # Convert timestamp from ms to ISO format (UTC)
+                timestamp = pd.to_datetime(current_track['timestamp'], unit='ms').isoformat() + 'Z'
                 spotify_uri = track_item.get('uri')
-                reason_start = 'unknown'
-                reason_end = 'endplay'
 
+                # When a new track starts, update ms_played for the previous track
                 if track_id != last_track_id:
-                    # Update ms_played for the previous track
                     if last_track_id is not None and last_track_start_time is not None:
                         ms_played = current_track['timestamp'] - last_track_start_time
                         if last_track_logged is not None:
@@ -73,17 +72,14 @@ def log_currently_playing(sp, output_file_path):
                             write_entry_to_csv(last_track_logged, output_file_path)
                             logging.info(f"Updated ms_played for the previous track: {ms_played} ms")
 
-                    # Log the new track
+                    # Log the new track with ms_played initially as 0
                     new_entry = {
                         'ts': timestamp,
-                        'ms_played': 0,  # Placeholder, will update on track change/stop
+                        'ms_played': 0,
                         'master_metadata_track_name': track_name,
                         'master_metadata_album_artist_name': artists,
                         'master_metadata_album_album_name': album_name,
-                        'spotify_track_uri': spotify_uri,
-                        'reason_start': reason_start,
-                        'reason_end': reason_end,
-                        'offline_timestamp': 0  # Placeholder for offline timestamp
+                        'spotify_track_uri': spotify_uri
                     }
                     logging.info(f"Logged: {track_name} by {artists} at {timestamp}")
 
@@ -93,7 +89,7 @@ def log_currently_playing(sp, output_file_path):
                     last_track_logged = new_entry
 
             elif last_track_id is not None:
-                # Update ms_played for the last track when playback stops
+                # if playback stops it updates ms_played for the last track
                 if last_track_start_time is not None:
                     ms_played = int(time.time() * 1000) - last_track_start_time
                     if last_track_logged is not None:
@@ -109,12 +105,12 @@ def log_currently_playing(sp, output_file_path):
             else:
                 logging.info("No track is currently playing.")
 
-            time.sleep(10)  # Poll every 10 seconds
+            time.sleep(10)  # checks 10 seconds
     except KeyboardInterrupt:
         logging.info("Exiting log_currently_playing due to keyboard interrupt.")
 
-output_file_path = "________________.csv"
 log_currently_playing(sp, output_file_path)
+
 
 
 # def log_currently_playing():

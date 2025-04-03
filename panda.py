@@ -1,7 +1,6 @@
 import pandas as pd
 import glob
 import os
-import time
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyClientCredentials
 from dotenv import load_dotenv
@@ -10,7 +9,6 @@ load_dotenv()
 spotify = Spotify(auth_manager=SpotifyClientCredentials(client_id=os.getenv("SPOTIPY_CLIENT_ID"),
                                                          client_secret=os.getenv("SPOTIPY_CLIENT_SECRET")))
 
-time_start = time.time()
 relative_path = os.path.join('c:\githubb\.venv\spotify1', '_testfiles', '*.json')
 
 files = glob.glob(os.path.join('c:\githubb\.venv\spotify1', '_testfiles', '*.json'))
