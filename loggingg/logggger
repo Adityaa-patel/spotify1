@@ -6,6 +6,8 @@
 #make the rest of the code not run when spotify was just not active in any devices
 
 # old stuff from buffer threshhold might still be there in code remove that part or yeah add it when it gets too big
+# get better understandinf of async and await and Typing type variables 
+# async https://www.reddit.com/r/Python/comments/16z1mpy/seasoned_python_developer_no_understanding_of/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
 #############
 import spotipy
 import os
