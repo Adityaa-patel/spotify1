@@ -1,5 +1,13 @@
+##############
+# make a function to wait when api is inactive take parameter for diffrent cases
+# 
+# make treshhold for buffer to make sure it dosent gets too big
+# 
+#make the rest of the code not run when spotify was just not active in any devices
+
+# old stuff from buffer threshhold might still be there in code remove that part or yeah add it when it gets too big
+#############
 import spotipy
-# import pandas as pd # No longer needed for writing, keep if used elsewhere
 import os
 import time
 import logging
@@ -14,7 +22,7 @@ from typing import Dict, Optional, List
 
 load_dotenv()
 
-DEFAULT_OUTPUT_FILE_PATH = 'C:\\githubb\\.venv\\spotify1\\output.csv' # Or your preferred path
+DEFAULT_OUTPUT_FILE_PATH = 'C:\\githubb\\.venv\\spotify1\\output.csv'
 
 csvHeader = [
     'ts', 'ms_played', 'master_metadata_track_name',
@@ -47,7 +55,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 class SpotifyLogger:
 
-    def __init__(self, sp_client: spotipy.Spotify, output_file: str, poll_interval: int = 1, buffer_size: int = 10, inactivity_timeout: int = 90, flush_interval: int = 60):
+    def __init__(self, sp_client: spotipy.Spotify, output_file: str, poll_interval: int = 1, inactivity_timeout: int = 90, flush_interval: int = 60):
         """
         sp_client: authenticated Spotipy client object
         output_file: Path to the CSV output file.
@@ -59,7 +67,6 @@ class SpotifyLogger:
         self.sp = sp_client
         self.output_file = output_file
         self.poll_interval = poll_interval
-        self.buffer_size = buffer_size # Retained, but less impactful now
         self.entry_buffer: List[Dict] = []
         self.last_track_id: Optional[str] = None
         self.last_track_start_time: Optional[int] = None # Timestamp when the track *started* playing
@@ -108,12 +115,7 @@ class SpotifyLogger:
         # Buffer writing is now handled periodically/on exit by writeBuffer
         self.entry_buffer.append(entry)
         logging.debug(f"Entry added to buffer: {entry.get('master_metadata_track_name', 'N/A')}")
-        # Optional: Could still trigger an early flush if buffer gets very large,
-        # but the periodic flush is the main mechanism.
-        # if len(self.entry_buffer) >= self.buffer_size:
-        #     # Cannot call async writeBuffer directly here.
-        #     # Rely on periodic flush.
-        #     logging.debug(f"Buffer size {len(self.entry_buffer)} reached, awaiting periodic flush.")
+        # can add a upper threshold for the buffer size to trigger a flush, but not critical now
         pass # Explicitly do nothing further synchronously
 
 
@@ -134,7 +136,7 @@ class SpotifyLogger:
                 writer = csv.DictWriter(f, fieldnames=csvHeader, quoting=csv.QUOTE_MINIMAL)
                 # Write rows asynchronously (though csv module itself isn't async)
                 # await writer.writerows(buffer_copy) # Requires more complex async adaptation or loop
-                # Simpler loop for compatibility:
+                # Simpler loop
                 csv_writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
                 for row_dict in buffer_copy:
                     row_list = [row_dict.get(col) for col in csvHeader]
@@ -407,11 +409,10 @@ class SpotifyLogger:
             while self.logging_active:
                 start_poll_time = time.monotonic()
 
-                # 1. Check active devices (async helper)
                 devices = await self.get_active_devices()
-                if devices is None: # Indicates an error during fetch
+                if devices is None: # indicates an error during fetch
                     logging.error("Could not retrieve device list. Pausing before retry...")
-                    await asyncio.sleep(self.poll_interval * 2) # Wait longer on error
+                    await asyncio.sleep(self.poll_interval * 2) # wait longer on error
                     continue
                 if not devices:
                     logging.warning("No active Spotify devices detected. Checking again...")
@@ -419,17 +420,14 @@ class SpotifyLogger:
                     self.logging_active = False
                     break #breaks when no device found
 
-                # 2. Fetch the current track (async helper)
                 current_track = await self.get_current_track()
 
-                # 3. Process the track information
                 if current_track and current_track.get('is_playing'):
                     self.process_playing_track(current_track)
                 else:
                     # Handles None response, not playing, paused state, inactivity
                     self.process_inactive_track(current_track)
 
-                # 4. Wait for the next poll interval
                 end_poll_time = time.monotonic()
                 elapsed = end_poll_time - start_poll_time
                 wait_time = self.poll_interval - elapsed
@@ -437,45 +435,44 @@ class SpotifyLogger:
                     await asyncio.sleep(wait_time)
                 else:
                     logging.warning(f"Polling took longer ({elapsed:.2f}s) than interval ({self.poll_interval}s).")
-                    await asyncio.sleep(0.1) # Small sleep to prevent tight loop spin
+                    await asyncio.sleep(0.1) # small sleep to prevent tight loop spin
 
         except asyncio.CancelledError:
             logging.info("Logging task cancelled.")
         except Exception as e:
-            logging.exception(f"An unexpected error occurred in the main loop: {e}") # Log stack trace
+            logging.exception(f"An unexpected error occurred in the main loop: {e}") # Log error trace
         finally:
             logging.info("Shutting down Spotify Logger...")
-            # Cancel the periodic flush task
+            # cancel periodic flush task
             if self._flush_task:
                 self._flush_task.cancel()
                 try:
                     await self._flush_task
                 except asyncio.CancelledError:
                     logging.debug("Flush task cancelled successfully.")
-            # Ensure any remaining entries in the buffer are written on exit
+            
             logging.info("Writing final buffer entries...")
-            await self.writeBuffer() # Final async write
+            await self.writeBuffer()
             logging.info("Spotify Logger stopped.")
 
 
 if __name__ == "__main__":
     poll_rate = int(os.getenv("SPOTIFY_POLL_INTERVAL", 5))
-    buffer_size = int(os.getenv("SPOTIFY_BUFFER_SIZE", 10)) # Less critical now
+    #buffer_size = int(os.getenv("SPOTIFY_BUFFER_SIZE", 10)) # Less critical now
     inactivity_timeout = int(os.getenv("SPOTIFY_INACTIVITY_TIMEOUT", 90))
     flush_interval = int(os.getenv("SPOTIFY_FLUSH_INTERVAL", 60))
     output_file_path = os.getenv("SPOTIFY_OUTPUT_FILE_PATH", DEFAULT_OUTPUT_FILE_PATH)
 
-    # Ensure API client 'sp' is valid before proceeding
     if not sp:
          logging.critical("Spotify API client ('sp') not available from APIsetup. Exiting.")
          exit(1)
 
-    spotify_logger = SpotifyLogger(sp, output_file_path, poll_rate, buffer_size, inactivity_timeout, flush_interval)
+    spotify_logger = SpotifyLogger(sp, output_file_path, poll_rate, inactivity_timeout, flush_interval) #, buffer_size 
 
     try:
         asyncio.run(spotify_logger.getCurrentSong())
     except KeyboardInterrupt:
         logging.info("KeyboardInterrupt received. Stopping logger.")
-    # CancelledError should be handled within getCurrentSong's finally block now
+
     except Exception as e:
          logging.exception(f"Unhandled exception at the top level: {e}")
