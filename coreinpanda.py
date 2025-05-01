@@ -1,4 +1,4 @@
-from spotify1.panda import songs_only_df
+from panda import songs_only_df
 import pandas as pd
 import matplotlib.pyplot as plt
 

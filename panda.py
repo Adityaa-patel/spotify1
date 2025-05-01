@@ -38,23 +38,3 @@ def get_artist_genres_for_1_artist(artist_name):
         return None
 
 
-def get_artist_genres_real(artist_name):  # not using this because songs are genre fluid like it might be diffrent from the artist genre
-    try:
-        if type(artist_name) == list:
-            return [get_artist_genres_for_1_artist(artist) for artist in artist_name]
-        elif type(artist_name) == str:
-            return get_artist_genres_for_1_artist(artist_name)
-        else:
-            return None
-    except Exception as e:
-        print(f"Error fetching genres for {artist_name}: {e}")
-        return None
-
-
-
-
-# daily_hours = songs_only_df
-# daily_hours = daily_hours.resample('W', on='ts')['ms_played'].sum().reset_index()
-# songs_only_df['weekly hours'] = daily_hours['ms_played'] / (1000*60*60)
-
-# print(daily_hours.head())
