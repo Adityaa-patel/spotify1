@@ -16,7 +16,6 @@ import logging
 import logging.config
 import asyncio
 from spotipy.exceptions import SpotifyException # Import specific exception
-import aiofiles # For async file I/O
 import csv
 from APIsetup import sp  # Authenticated Spotify API client
 from dotenv import load_dotenv
@@ -86,29 +85,48 @@ class SpotifyLogger:
         self._header_written = False # Flag to ensure header is written only once
 
     async def _ensure_csv_header(self) -> None:
-        """Asynchronously checks if the CSV header needs to be written."""
+        """Asynchronously checks if the CSV header needs to be written using thread-safe methods."""
         if self._header_written:
             return
         try:
-            # Check if file exists and is empty
+            # Check file existence and size using asyncio.to_thread to avoid blocking
             file_exists = await asyncio.to_thread(os.path.exists, self.output_file)
-            is_empty = True
+            needs_header = not file_exists
             if file_exists:
-                async with aiofiles.open(self.output_file, mode='r', encoding='utf-8') as f:
-                    # Check if the file is truly empty or just contains whitespace
-                    content = await f.read(1)
-                    if content:
-                         is_empty = False
+                try:
+                    # Also check size in a thread
+                    file_size = await asyncio.to_thread(os.path.getsize, self.output_file)
+                    if file_size == 0:
+                        needs_header = True
+                except OSError as e:
+                    # Handle case where file exists but getsize fails (e.g., permissions)
+                    logging.warning(f"Could not get size of existing file '{self.output_file}': {e}. Assuming header needed.")
+                    needs_header = True # Be safe and assume header needed if size check fails
 
-            if not file_exists or is_empty:
-                async with aiofiles.open(self.output_file, mode='w', encoding='utf-8', newline='') as f:
-                    writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
-                    await writer.writerow(csvHeader)
-                logging.info(f"CSV header written to {self.output_file}")
-            self._header_written = True
-        except OSError as e:
-            logging.error(f"Error ensuring CSV header for '{self.output_file}': {e}")
-            # If we can't ensure the header, we probably can't write later, stop logging?
+            if needs_header:
+                logging.info(f"Attempting to write CSV header to {self.output_file}")
+                try:
+                    # Use standard synchronous open for csv.DictWriter
+                    with open(self.output_file, mode='w', encoding='utf-8', newline='') as f:
+                        # Create a synchronous DictWriter
+                        writer = csv.DictWriter(f, fieldnames=csvHeader, quoting=csv.QUOTE_MINIMAL)
+
+                        # --- FIX: Run the synchronous writeheader() in a thread ---
+                        await asyncio.to_thread(writer.writeheader)
+                        # --------------------------------------------------------
+
+                        logging.info(f"CSV header written to {self.output_file}")
+                        self._header_written = True
+                except (IOError, OSError) as e:
+                     logging.error(f"Error writing CSV header to '{self.output_file}': {e}")
+                     self.logging_active = False # Stop if we can't write header
+            else:
+                 logging.debug(f"CSV header already exists in {self.output_file}")
+                 self._header_written = True # Mark as handled even if it already existed
+
+        except Exception as e:
+            # Catch any other unexpected errors during the checks
+            logging.error(f"Unexpected error ensuring CSV header for '{self.output_file}': {e}")
             self.logging_active = False
 
 
@@ -122,35 +140,41 @@ class SpotifyLogger:
 
 
     async def writeBuffer(self) -> None:
-        """Asynchronously writes the current buffer of entries to the CSV file."""
-        await self._ensure_csv_header() # Ensure header is checked/written before append
+        """Asynchronously writes the current buffer of entries to the CSV file using asyncio.to_thread."""
+        # Ensure header check logic has run (it sets self._header_written)
+        if not self._header_written:
+             await self._ensure_csv_header()
+             # If ensuring header failed, logging_active will be False, prevent writing
+             if not self.logging_active:
+                  logging.warning("Skipping buffer write because CSV header could not be ensured.")
+                  return
+
         if not self.entry_buffer:
             return # Nothing to write
 
         # Create a copy of the buffer to write, then clear original
         buffer_copy = list(self.entry_buffer)
         self.entry_buffer = []
-        logging.info(f"Attempting to write {len(buffer_copy)} entries to CSV.")
+        logging.info(f"trying to write {len(buffer_copy)} entries to CSV via background thread")
 
         try:
-            async with aiofiles.open(self.output_file, mode='a', encoding='utf-8', newline='') as f:
-                # Use DictWriter for clarity, ensuring columns match header order
+            # synchronous open in append mode
+            with open(self.output_file, mode='a', encoding='utf-8', newline='') as f:
+                # Use DictWriter, buffer_copy contains list of dicts
                 writer = csv.DictWriter(f, fieldnames=csvHeader, quoting=csv.QUOTE_MINIMAL)
-                # Write rows asynchronously (though csv module itself isn't async)
-                # await writer.writerows(buffer_copy) # Requires more complex async adaptation or loop
-                # Simpler loop
-                csv_writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
-                for row_dict in buffer_copy:
-                    row_list = [row_dict.get(col) for col in csvHeader]
-                    await csv_writer.writerow(row_list) # await the underlying write call
-            logging.info(f"Successfully wrote {len(buffer_copy)} entries.")
-        except (IOError, OSError) as e:
-            logging.error(f"Error writing to CSV file '{self.output_file}': {e}")
-            # Consider putting failed entries back in buffer? Or log them?
-            # For simplicity, we'll log the error and potentially lose these entries.
-        except Exception as e:
-            logging.error(f"An unexpected error occurred during CSV writing: {e}")
+                await asyncio.to_thread(writer.writerows, buffer_copy)
 
+                logging.info(f"Successfully wrote {len(buffer_copy)} entries in csv")
+        except (IOError, OSError) as e:
+            logging.error(f"Error writing buffer to CSV file(IO error or OS error) '{self.output_file}': {e}")
+            # if the line below is uncommented it will write the buffer where error occured
+            #  in next buffer but the issue is what if the error happended after writeing 
+            # a few entires this will make dublicate entries will have to keep track of 
+            # how many written and all but idk will think about it letter
+            self.entry_buffer = buffer_copy + self.entry_buffer 
+        except Exception as e:
+            logging.error(f"An unexpected error occurred during CSV buffer writing: {e}")
+            # other error idk about
 
     def updateLastTrack(self, finalize_timestamp: int) -> None:
         """
@@ -198,7 +222,7 @@ class SpotifyLogger:
     # --- Helper Functions ---
 
     async def get_active_devices(self) -> Optional[List[Dict]]:
-        """Fetches the list of active Spotify devices, handling rate limits."""
+        """Fetches the list of active Spotify devices also handls rate limits"""
         retries = 3
         delay = 5 # seconds
         for attempt in range(retries):
@@ -212,11 +236,11 @@ class SpotifyLogger:
                     await asyncio.sleep(retry_after)
                 else:
                     logging.error(f"Spotify API error fetching devices: {e}")
-                    return None # Don't retry on other Spotify errors
+                    return None # no retry
             except Exception as e:
                 logging.error(f"Unexpected error fetching devices: {e}")
-                return None # Don't retry on unexpected errors
-        logging.error("Max retries exceeded for getting devices.")
+                return None # no retry
+        logging.error("Max retries exceeded for getting devices either rate limit or other unknown error will handle them later")
         return None
 
 
@@ -418,7 +442,7 @@ class SpotifyLogger:
                     continue
                 if not devices:
                     logging.warning("No active Spotify devices detected. Checking again...")
-                    await asyncio.sleep(self.poll_interval)
+                    await asyncio.sleep(self.poll_interval*5)
                     # i dont think it needs it's own cool down because loop is also slow
                     self.logging_active = False
                     break #breaks when no device found
