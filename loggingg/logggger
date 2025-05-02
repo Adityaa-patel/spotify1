@@ -24,7 +24,7 @@ from typing import Dict, Optional, List
 
 load_dotenv()
 
-DEFAULT_OUTPUT_FILE_PATH = 'C:\\githubb\\.venv\\spotify1\\output.csv'
+DEFAULT_OUTPUT_FILE_PATH = 'self.output1.csv'
 
 csvHeader = [
     'ts', 'ms_played', 'master_metadata_track_name',
@@ -405,7 +405,7 @@ class SpotifyLogger:
              return
 
         self._flush_task = asyncio.create_task(self._periodic_flush())
-        logging.info("Spotify Logger started. Polling interval: {self.poll_interval}s, Flush interval: {self.flush_interval}s")
+        logging.info(f"Spotify Logger started. Polling interval: {self.poll_interval}s, Flush interval: {self.flush_interval}s")
 
         try:
             while self.logging_active:
@@ -418,6 +418,7 @@ class SpotifyLogger:
                     continue
                 if not devices:
                     logging.warning("No active Spotify devices detected. Checking again...")
+                    await asyncio.sleep(self.poll_interval)
                     # i dont think it needs it's own cool down because loop is also slow
                     self.logging_active = False
                     break #breaks when no device found

@@ -183,7 +183,7 @@
 
 # logCurrentSongNewWay(sp, output_file_path)
 
-
+##########loggs same shit twice
 
 import spotipy
 import pandas as pd
